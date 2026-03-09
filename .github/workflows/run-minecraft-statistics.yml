@@ -1,0 +1,45 @@
+name: Minecraft Version Statistics
+
+on:
+  # 允许手动触发，并可输入 RUN_VERSIONS
+  workflow_dispatch:
+    inputs:
+      RUN_VERSIONS:
+        description: '要处理的版本ID列表（逗号分隔，留空表示使用黑名单）'
+        required: false
+        default: ''
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest  # 使用 Ubuntu LTS 最新版
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 JDK 17 (推荐 LTS 版本)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'   # Eclipse Temurin (Adoptium)
+          java-version: '17'
+
+      - name: 验证 JDK 安装
+        run: java -version
+
+      - name: 赋予 Gradle Wrapper 执行权限
+        run: chmod +x gradlew
+
+      - name: 运行分析程序
+        env:
+          # 将输入的 RUN_VERSIONS 传递给程序（如果为空则程序内部使用黑名单）
+          RUN_VERSIONS: ${{ github.event.inputs.RUN_VERSIONS }}
+        run: |
+          # 执行主类（需在 build.gradle 中定义 runMain 任务，见下文）
+          ./gradlew runMain
+
+      - name: 上传 result.json 作为 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minecraft-version-results
+          path: run/result.json
+          if-no-files-found: warn  # 若文件不存在则警告但不失败
